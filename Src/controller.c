@@ -13,6 +13,6 @@ void startControllerTask(TimerHandle_t t){
 		sprintf(str_main, "Pitch: %3d Req: %3d\n", (int)pitch, (int)number);
 		print(str_main);
 
-		osDelay(50);
+		osDelay(10);
 	}
 }

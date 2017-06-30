@@ -49,34 +49,27 @@ void startCommTask(void const * argument) {
 		char localCopy[15];
 
 		ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-		HAL_UART_DMAPause(&huart3);
 		strncpy(localCopy, Rxbuff, 15);
-		HAL_UART_DMAResume(&huart3);
+		HAL_UART_Receive_DMA(&huart3, (uint8_t*)Rxbuff, (uint16_t)15);
+
 		number = 0;
 
 
-			for(e = 0; e < MSG_LEN; e++){
-					if(localCopy[e] == '-'){
-						sign = -1;
-					}
+		for(e = 0; e < MSG_LEN; e++){
+				if(localCopy[e] == '-'){
+					sign = -1;
+				}
 
-					else if(localCopy[e] == ':'){
-						received = true;
-					}
+				else if(localCopy[e] == ':'){
+					received = true;
+				}
 
-					else if(received == true){
-						number = number * 10 + (localCopy[e] - '0');
-					}
-			}
+				else if(received == true){
+					number = number * 10 + (localCopy[e] - '0');
+				}
+		}
 
-			number *= sign;
-
-
-			HAL_UART_Receive_DMA(&huart3, (uint8_t*)Rxbuff, (uint16_t)15);
-
-
-
-
+		number *= sign;
 
 	}
 }
