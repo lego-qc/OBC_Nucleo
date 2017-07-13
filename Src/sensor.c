@@ -19,6 +19,7 @@ void startSensorTask(void const * argument) {
 	VectorFloat gravity;
 	float ypr[3];
 
+//	osDelay(5000);
 	vTaskSuspendAll();
 
 	MPU6050(0xD0);
