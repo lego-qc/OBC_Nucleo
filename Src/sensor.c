@@ -10,7 +10,7 @@ volatile uint8_t mpuInt;
 volatile uint8_t mpuIntStatus;   // holds actual interrupt status byte from MPU
 volatile uint16_t fifoCount;     // count of all bytes currently in FIFO
 
-extern int pitch;
+extern float pitch;
 UART_HandleTypeDef huart2;
 
 void startSensorTask(void const * argument) {
@@ -74,7 +74,7 @@ void startSensorTask(void const * argument) {
 			MPUdmpGetGravityVect(&gravity, &q);
 			MPUdmpGetYawPitchRoll(ypr, &q, &gravity);
 
-			pitch = (int32_t)round(ypr[2]* 180/M_PI);
+			pitch = ((ypr[2] * 180.0)/M_PI);
 		}
 
 	}

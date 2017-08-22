@@ -77,7 +77,7 @@
 #define LED_GPIO_Port GPIOB
 
 #define M_PI (3.1416)
-#define MSG_LEN 15
+#define MSG_LEN 32
 #define packetSize (42)    // expected DMP packet size (default is 42 bytes)
 
 /* USER CODE END Private defines */

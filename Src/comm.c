@@ -5,10 +5,10 @@
 #include <string.h>
 
 
-extern char Rxbuff[20];
+extern char Rxbuff[MSG_LEN];
 extern UART_HandleTypeDef huart2;
 extern UART_HandleTypeDef huart3;
-extern int32_t number;
+extern int32_t numbers[4];
 extern bool started;
 extern bool stopped;
 
@@ -16,8 +16,8 @@ extern bool stopped;
 void startCommTask(void const * argument) {
 	char msg1[] = "WIFI init succes!\n";
 	char msg2[] = "WIFI init fail...\n";
-	char start[] = "STRT\0";
-	char stop[] = "STOP\0";
+	char start[] = "START_______________\0";
+	char stop[] = "STOP________________\0";
 	char textMsg[MSG_LEN];
 	char last = 0;
 
@@ -46,7 +46,7 @@ void startCommTask(void const * argument) {
 
 		}
 	}
-	HAL_UART_Receive_DMA(&huart3, (uint8_t*)Rxbuff, (uint16_t)15);
+	HAL_UART_Receive_DMA(&huart3, (uint8_t*)Rxbuff, (uint16_t)MSG_LEN);
 
 	xTaskResumeAll();
 	HAL_GPIO_WritePin(LED_GPIO_Port,LED_Pin, GPIO_PIN_SET);
@@ -57,13 +57,15 @@ void startCommTask(void const * argument) {
 		char localCopy[MSG_LEN];
 		int i = 0;
 		int l = 0;
+		int numbersCount = 0;
 
 
 		ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-		strncpy(localCopy, Rxbuff, 15);
-		HAL_UART_Receive_DMA(&huart3, (uint8_t*)Rxbuff, (uint16_t)15);
-
-		number = 0;
+		strncpy(localCopy, Rxbuff, MSG_LEN); //old: 15 (11 + 4)
+		HAL_UART_Receive_DMA(&huart3, (uint8_t*)Rxbuff, (uint16_t)MSG_LEN);
+		for(l = 0; l < 4; l++){
+			numbers[l] = 0;
+		}
 
 		for(l = 0; l < MSG_LEN; l++){
 			textMsg[l] = 0;
@@ -82,11 +84,18 @@ void startCommTask(void const * argument) {
 
 				else if(received == true){
 					if((localCopy[e] >= '0') && (localCopy[e] <= '9')){
-						number = number * 10 + (localCopy[e] - '0');
+						numbers[numbersCount] = numbers[numbersCount] * 10 + (localCopy[e] - '0');
+					}
+
+					else if(localCopy[e] == '%'){
+						if(numbersCount < 4){
+							numbersCount++;
+							numbers[numbersCount] *= sign;
+							sign = 1;
+						}
 					}
 
 					else{
-
 						textMsg[i] = localCopy[e];
 						i++;
 					}
@@ -104,7 +113,7 @@ void startCommTask(void const * argument) {
 			stopped = true;
 		}
 
-		number *= sign;
+
 
 	}
 }

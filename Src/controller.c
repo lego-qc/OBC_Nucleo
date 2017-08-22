@@ -3,53 +3,92 @@
 #include <string.h>
 #include <stdbool.h>
 
-extern int32_t number;
-extern int pitch;
+#define motor1 (htim3.Instance->CCR1)
+#define motor2 (htim3.Instance->CCR3)
+#define motor3 (htim3.Instance->CCR2)
+#define motor4 (htim3.Instance->CCR4)
+
+extern int32_t numbers[4];
+extern float pitch;
 extern bool started;
 extern bool stopped;
 extern TIM_HandleTypeDef htim3;
+extern int control;
 
 void startControllerTask(TimerHandle_t t){
+	float integral = 0;
+	float lastErr = 0;
 	char str_main[50];
+	uint lastTicks = 0;
+	int32_t diff = 0;
 
 
 	while(1){
 
 		if(stopped == true){
-			htim3.Instance->CCR1 =80;
-			htim3.Instance->CCR2 =80;
-			htim3.Instance->CCR3 =80;
-			htim3.Instance->CCR4 =80;
+			motor1 =800;
+			motor2 =800;
+			motor3 =800;
+			motor4 =800;
 		}
 		else if(started == true){
-			int error = 0;
-			float control = 0;
-			int speed = 100;
+			float error = 0;
+			int speed = 910;
+			float deriv = 0;
+			float locPitch = pitch;
+			uint ticks = xTaskGetTickCount();
+			diff = ticks - lastTicks;
+			lastTicks = ticks;
 
-			error = number - pitch;
-			control = error * 0.4;
+			error = numbers[0] - locPitch;
+			integral = integral + (error * 0.011);
 
-			if(control <= 30){
-				htim3.Instance->CCR1 = speed + control;
-				htim3.Instance->CCR2 = speed + control;
-				htim3.Instance->CCR3 = speed - control;
-				htim3.Instance->CCR4 = speed - control;
+
+			if(integral >= 120){
+				integral = 120;
 			}
+			else if(integral <= -120){
+				integral = -120;
+			}
+
+			deriv = (error - lastErr)/0.011 ;
+			lastErr = error;
+
+			control = (int)(error*(numbers[1] / 10.0) + integral*(numbers[2] / 10.0) + deriv*(numbers[3] / 10.0));
+
+
+			if(control >= 200){
+				control = 200;
+			}
+
+			else if(control <= -200){
+				control = -200;
+			}
+			if(control > 0){
+				motor1 = speed + control;
+				motor2 = speed + control;
+				motor3 = speed;
+				motor4 = speed;
+			}
+
 			else{
-				htim3.Instance->CCR1 =80;
-				htim3.Instance->CCR2 =80;
-				htim3.Instance->CCR3 =80;
-				htim3.Instance->CCR4 =80;
+				motor1 = speed;
+				motor2 = speed;
+				motor3 = speed - control;
+				motor4 = speed - control;
 			}
 
-			sprintf(str_main, "Pitch: %3d Req: %3d\n", (int)pitch, (int)number);
-			print(str_main);
+
+
+
+
 
 
 
 
 		}
-
+		sprintf(str_main, "%3d	%3d\n", (int)numbers[0], (int)pitch);
+		print(str_main);
 		osDelay(10);
 	}
 }
