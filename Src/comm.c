@@ -89,8 +89,8 @@ void startCommTask(void const * argument) {
 
 					else if(localCopy[e] == '%'){
 						if(numbersCount < 4){
-							numbersCount++;
 							numbers[numbersCount] *= sign;
+							numbersCount++;
 							sign = 1;
 						}
 					}

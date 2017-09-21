@@ -17,6 +17,7 @@ extern int control;
 
 void startControllerTask(TimerHandle_t t){
 	float integral = 0;
+	float deriv = 0;
 	float lastErr = 0;
 	char str_main[50];
 	uint lastTicks = 0;
@@ -26,16 +27,21 @@ void startControllerTask(TimerHandle_t t){
 	while(1){
 
 		if(stopped == true){
-			motor1 =800;
-			motor2 =800;
-			motor3 =800;
-			motor4 =800;
+			motor1 =2400;
+			motor2 =2400;
+			motor3 =2400;
+			motor4 =2400;
 		}
 		else if(started == true){
 			float error = 0;
-			int speed = 910;
-			float deriv = 0;
+			int speed = 2750;
+
 			float locPitch = pitch;
+			int motor1Loc = 0;
+			int motor2Loc = 0;
+			int motor3Loc = 0;
+			int motor4Loc = 0;
+
 			uint ticks = xTaskGetTickCount();
 			diff = ticks - lastTicks;
 			lastTicks = ticks;
@@ -51,43 +57,58 @@ void startControllerTask(TimerHandle_t t){
 				integral = -120;
 			}
 
-			deriv = (error - lastErr)/0.011 ;
-			lastErr = error;
+			deriv = (locPitch - lastErr)/0.011 ; //thesis alapján
+			lastErr = locPitch;
 
-			control = (int)(error*(numbers[1] / 10.0) + integral*(numbers[2] / 10.0) + deriv*(numbers[3] / 10.0));
+			control = (int)(error*((numbers[1]) / 10.0) + integral*((numbers[2]) / 10.0) - deriv*((numbers[3]) / 10.0));
 
 
-			if(control >= 200){
-				control = 200;
+			if(control >= 400){
+				control = 400;
 			}
 
-			else if(control <= -200){
-				control = -200;
-			}
-			if(control > 0){
-				motor1 = speed + control;
-				motor2 = speed + control;
-				motor3 = speed;
-				motor4 = speed;
+			else if(control <= -400){
+				control = -400;
 			}
 
+			motor1Loc = speed + control;
+			motor2Loc = speed + control;
+			motor3Loc = speed - control;
+			motor4Loc = speed - control;
+
+			if(motor1Loc >= 2700){
+				motor1 = motor1Loc;
+			}
 			else{
-				motor1 = speed;
-				motor2 = speed;
-				motor3 = speed - control;
-				motor4 = speed - control;
+				motor1 = 2700;
 			}
 
+			if(motor2Loc >= 2700){
+				motor2 = motor2Loc;
+			}
+			else{
+				motor2 = 2700;
+			}
 
+			if(motor3Loc >= 2700){
+				motor3 = motor3Loc;
+			}
+			else{
+				motor3 = 2700;
+			}
 
-
-
+			if(motor4Loc >= 2700){
+				motor4 = motor4Loc;
+			}
+			else{
+				motor4 = 2700;
+			}
 
 
 
 
 		}
-		sprintf(str_main, "%3d	%3d\n", (int)numbers[0], (int)pitch);
+		sprintf(str_main, "%3d %3d\n", (int)(pitch*10), (int)(control*10));
 		print(str_main);
 		osDelay(10);
 	}
