@@ -101,6 +101,9 @@ TimerHandle_t timer;
 
 int32_t numbers[4];
 float pitch = 0;
+float pitchVel = 0;
+int32_t ang_vel[3];
+
 
 char Rxbuff[MSG_LEN];
 //uint8_t buff2[20];
@@ -109,7 +112,6 @@ uint8_t OK = false;
 uint8_t len = 0;
 bool started = false;
 bool stopped = false;
-int control = 0;
 
 char str[20];
 
@@ -226,11 +228,11 @@ int main(void)
 
 
 
-	xTaskCreate(startStartUp, "Start", 300, NULL, 5, NULL);
+	xTaskCreate(startStartUp, "Start", 500, NULL, 5, NULL);
 	xTaskCreate(startSensorTask, "Sensor", 500, NULL, 4, &sensorTaskHandle);
 	xTaskCreate(startCommTask, "Comm", 500, NULL, 3, &commTaskHandle);
 //	xTaskCreate(startControlTask, "Control", 128, NULL, 1, &controlTaskHandle);
-	xTaskCreate(startControllerTask, "Controller", 128, NULL, 2, controllerTaskHandle);
+	xTaskCreate(startControllerTask, "Controller", 300, NULL, 2, controllerTaskHandle);
 	//xTaskCreate(startPwmTask, "PWM", 128, NULL, 1, pwmTaskHandle);
 
   /* USER CODE END RTOS_THREADS */
@@ -458,9 +460,9 @@ static void MX_TIM3_Init(void)
   TIM_OC_InitTypeDef sConfigOC;
 
   htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 27;
+  htim3.Init.Prescaler = 6;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 60000;
+  htim3.Init.Period = 65000;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
   {
@@ -793,16 +795,16 @@ void startStartUp(void const * argument){
 	htim3.Instance->CCR4 =0;
 
 	osDelay(3000);
-	htim3.Instance->CCR1 =5900;
-	htim3.Instance->CCR2 =5900;
-	htim3.Instance->CCR3 =5900;
-	htim3.Instance->CCR4 =5900;
+	htim3.Instance->CCR1 =26000; //5900
+	htim3.Instance->CCR2 =26000;
+	htim3.Instance->CCR3 =26000;
+	htim3.Instance->CCR4 =26000;
 
 	osDelay(2000);
-	htim3.Instance->CCR1 =2400;
-	htim3.Instance->CCR2 =2400;
-	htim3.Instance->CCR3 =2400;
-	htim3.Instance->CCR4 =2400;
+	htim3.Instance->CCR1 =13000;
+	htim3.Instance->CCR2 =13000;
+	htim3.Instance->CCR3 =13000;
+	htim3.Instance->CCR4 =13000; //2400
 
 	osDelay(500);
 

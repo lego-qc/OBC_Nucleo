@@ -361,7 +361,7 @@ uint8_t MPUdmpInitialize(){
             MPUsetIntEnabled(0x12);
 
             printf("\nSetting sample rate to 200Hz...");
-            MPUsetRate(4); // 1khz / (1 + 4) = 200 Hz ///// 50Hz
+            MPUsetRate(1); // 1khz / (1 + 4) = 200 Hz ///// 50Hz
 
             printf("\nSetting external frame sync to TEMP_OUT_L[0]...");
             MPUsetExternalFrameSync(MPU6050_EXT_SYNC_TEMP_OUT_L);

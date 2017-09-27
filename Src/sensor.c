@@ -11,6 +11,8 @@ volatile uint8_t mpuIntStatus;   // holds actual interrupt status byte from MPU
 volatile uint16_t fifoCount;     // count of all bytes currently in FIFO
 
 extern float pitch;
+extern float pitchVel;
+extern int32_t ang_vel[3];
 UART_HandleTypeDef huart2;
 
 void startSensorTask(void const * argument) {
@@ -18,6 +20,7 @@ void startSensorTask(void const * argument) {
 	Quaternion q;           // [w, x, y, z]         quaternion container
 	VectorFloat gravity;
 	float ypr[3];
+	float prevPitch = 0;
 
 //	osDelay(5000);
 	vTaskSuspendAll();
@@ -71,10 +74,16 @@ void startSensorTask(void const * argument) {
 			MPUgetFIFOBytes(fifoBuffer, packetSize);
 			fifoCount -= packetSize;
 			MPUdmpGetQuaternion(&q, fifoBuffer);
+			//MPUdmpGetGyro32(ang_vel, fifoBuffer);
+
 			MPUdmpGetGravityVect(&gravity, &q);
 			MPUdmpGetYawPitchRoll(ypr, &q, &gravity);
 
+
+
 			pitch = ((ypr[2] * 180.0)/M_PI);
+			pitchVel = (pitch - prevPitch)*100;
+			prevPitch = pitch;
 		}
 
 	}
