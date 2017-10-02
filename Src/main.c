@@ -100,9 +100,8 @@ osThreadId pwmTaskHandle;
 TimerHandle_t timer;
 
 int32_t numbers[4];
-float pitch = 0;
-float pitchVel = 0;
-int32_t ang_vel[3];
+float yprDegree[3];
+float angVel[3];
 
 
 char Rxbuff[MSG_LEN];

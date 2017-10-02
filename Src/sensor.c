@@ -10,9 +10,9 @@ volatile uint8_t mpuInt;
 volatile uint8_t mpuIntStatus;   // holds actual interrupt status byte from MPU
 volatile uint16_t fifoCount;     // count of all bytes currently in FIFO
 
-extern float pitch;
-extern float pitchVel;
-extern int32_t ang_vel[3];
+extern float yprDegree[3];
+extern float angVel[3];
+
 UART_HandleTypeDef huart2;
 
 void startSensorTask(void const * argument) {
@@ -20,7 +20,8 @@ void startSensorTask(void const * argument) {
 	Quaternion q;           // [w, x, y, z]         quaternion container
 	VectorFloat gravity;
 	float ypr[3];
-	float prevPitch = 0;
+	float prev[3];
+	int i = 0;
 
 //	osDelay(5000);
 	vTaskSuspendAll();
@@ -80,10 +81,11 @@ void startSensorTask(void const * argument) {
 			MPUdmpGetYawPitchRoll(ypr, &q, &gravity);
 
 
-
-			pitch = ((ypr[2] * 180.0)/M_PI);
-			pitchVel = (pitch - prevPitch)*100;
-			prevPitch = pitch;
+			for(i = 0; i < 3; i++){
+				yprDegree[i] = ((ypr[i] * 180.0)/M_PI);
+				angVel[i] = (yprDegree[i] - prev[i])*100;
+				prev[i] = yprDegree[i];
+			}
 		}
 
 	}

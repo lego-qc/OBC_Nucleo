@@ -23,7 +23,7 @@ void startCommTask(void const * argument) {
 
 	uint8_t e = 0;
 
-	osDelay(500);
+	//osDelay(500);
 	vTaskSuspendAll();
 
 
