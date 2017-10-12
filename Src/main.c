@@ -766,7 +766,7 @@ int ESPInit(void){
 }
 
 void print(const char* str){
-	HAL_UART_Transmit(&huart2,(uint8_t*)str, (uint16_t)strlen(str), (uint32_t)300);
+	HAL_UART_Transmit(&huart2,(uint8_t*)str, (uint16_t)strlen(str), (uint32_t)500);
 }
 
 
