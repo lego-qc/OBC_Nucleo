@@ -9,7 +9,7 @@
 #define motor3 (htim3.Instance->CCR2)
 #define motor4 (htim3.Instance->CCR4)
 
-#define minPWM 13800
+#define minPWM 14000
 #define maxControl 2000
 #define linSectionLength 1350
 #define dT 0.011
@@ -31,9 +31,11 @@ float lastDerivs2[6];
 float lastOutputs[6];
 float lastOutputs2[6];
 
-float P_ang[] = {0, 13, 13};
+float tmp[6];
 
-float P[] = {15,   2.3, 2.3};
+float P_ang[] = {0, 9, 9};
+
+float P[] = {10,   2.0, 1.8}; //15 2.4 2.2
 float I[] = {0.2, 0.4, 0.4};
 float D[] = {1, 1.2, 1.2};
 float maxAccel[] = {40, 450, 450};
@@ -50,11 +52,11 @@ int32_t PID(int i, float input, float sp, float P, float I, float D){
 	if(I != 0){
 	integrals[i] = integrals[i] + (error * dT);
 
-		if(integrals[i] >= 120){
-			integrals[i] = 120;
+		if(integrals[i] >= 500){
+			integrals[i] = 500;
 		}
-		else if(integrals[i] <= -120){
-			integrals[i] = -120;
+		else if(integrals[i] <= -500){
+			integrals[i] = -500;
 		}
 	}
 
@@ -70,7 +72,7 @@ int32_t PID(int i, float input, float sp, float P, float I, float D){
 		lastOutputs[i] = filterd;
 		lastOutputs2[i] = lastOutputs[i];
 	}
-
+	tmp[i] = filterd;
 	output = (int32_t)(error*(P) + integrals[i]*(I) + filterd*(D));
 
 	return output;
@@ -85,7 +87,6 @@ void startControllerTask(TimerHandle_t t){
 	int control[3];
 	float locAngVel[3];
 	float locYprDegree[3];
-	float tmp[3];
 
 	char str_main[100];
 	uint lastTicks = 0;
@@ -118,7 +119,7 @@ void startControllerTask(TimerHandle_t t){
 			motor4 =13000;
 		}
 		else if(started == true){
-			int speed = 14240; //14240
+			int speed = 14400; //14240
 
 			int motor1Loc = 0;
 			int motor2Loc = 0;
@@ -162,7 +163,7 @@ void startControllerTask(TimerHandle_t t){
 					}
 
 
-//					tmp[i] = control_ang[i];
+					tmp[i] = control_ang[i];
 
 
 					//input limitation to the rate controller
@@ -242,7 +243,7 @@ void startControllerTask(TimerHandle_t t){
 
 
 		}
-		sprintf(str_main, "%6d %6d\n", (int)(yprDegree[2] * 100), (int)(round(yprDegree[1] * 100)));
+		sprintf(str_main, "%6d %6d\n", (int)(control[1] * 100), (int)(round(yprDegree[1] * 100)));
 		print(str_main);
 		osDelay(10);
 	}
