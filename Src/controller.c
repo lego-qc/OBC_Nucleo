@@ -10,35 +10,37 @@
 #define motor4 (htim3.Instance->CCR4)
 
 #define minPWM 14000
-#define maxControl 2000
-#define linSectionLength 1350
+#define maxControl 2500
+#define linSectionLength 800 //1350
 #define dT 0.011
 
 extern int32_t numbers[4];
 extern float yprDegree[3];
 extern float angVel[3];
+extern int32_t ang_vel[3];
+extern int32_t ang_vel2[3];
+extern float euler[3];
 
 extern bool started;
 extern bool stopped;
-//extern int32_t ang_vel[3];
 extern TIM_HandleTypeDef htim3;
 
 float integrals[6];
 float lastInputs[6];
 float lastError[6];
-float lastDerivs[6];
-float lastDerivs2[6];
+float lastErrors[6];
+float lastErrors2[6];
 float lastOutputs[6];
 float lastOutputs2[6];
 
 float tmp[6];
 
-float P_ang[] = {0, 9, 9};
+float P_ang[] = {0, 3.5, 3.0};
 
-float P[] = {10,   2.0, 1.8}; //15 2.4 2.2
-float I[] = {0.2, 0.4, 0.4};
-float D[] = {1, 1.2, 1.2};
-float maxAccel[] = {40, 450, 450};
+float P[] = {17,   1, 0.8}; //15 2.4 2.2
+float I[] = {0.7, 0.3, 0.3};
+float D[] = {0.5, 0.5, 0.5};
+float maxAccel[] = {40, 450, 450}; //450
 
 int32_t PID(int i, float input, float sp, float P, float I, float D){
 	int32_t output = 0;
@@ -62,18 +64,18 @@ int32_t PID(int i, float input, float sp, float P, float I, float D){
 
 	if(D != 0){
 		//LPF for derivative term
-		deriv = (error - lastError[i])/dT ; //todo: change to diff
-		lastError[i] = error;
+		filterd = 0.0675 * error + 0.1349 * lastErrors[i] + 0.0675 * lastErrors2[i] + 1.1430 * lastOutputs[i] - 0.4129 * lastOutputs2[i];
 
-		filterd = 0.0675 * deriv + 0.1349 * lastDerivs[i] + 0.0675 * lastDerivs2[i] + 1.1430 * lastOutputs[i] - 0.4129 * lastOutputs2[i];
-		//filterd = 0.1311 * deriv_rate + 0.2622 * lastU + 0.1311 * lastU2 + 0.7478 * lastFilterd - 0.2723 * lastFilterd2;
-		lastDerivs[i] = deriv;
-		lastDerivs2[i] = lastDerivs[i];
+		lastErrors[i] = error;
+		lastErrors2[i] = lastErrors[i];
 		lastOutputs[i] = filterd;
 		lastOutputs2[i] = lastOutputs[i];
+
+		deriv = (filterd - lastError[i])/dT ; //todo: change to diff
+		lastError[i] = filterd;
 	}
 	tmp[i] = filterd;
-	output = (int32_t)(error*(P) + integrals[i]*(I) + filterd*(D));
+	output = (int32_t)(error*(P) + integrals[i]*(I) + deriv*(D));
 
 	return output;
 
@@ -98,8 +100,8 @@ void startControllerTask(TimerHandle_t t){
 		integrals[i] = 0;
 		lastInputs[i] = 0;
 		lastError[i] = 0;
-		lastDerivs[i] = 0;
-		lastDerivs2[i] = 0;
+		lastErrors[i] = 0;
+		lastErrors2[i] = 0;
 		lastOutputs[i] = 0;
 		lastOutputs2[i] = 0;
 	}
@@ -119,7 +121,7 @@ void startControllerTask(TimerHandle_t t){
 			motor4 =13000;
 		}
 		else if(started == true){
-			int speed = 14400; //14240
+			int speed = 14500; //14240
 
 			int motor1Loc = 0;
 			int motor2Loc = 0;
@@ -167,7 +169,7 @@ void startControllerTask(TimerHandle_t t){
 
 
 					//input limitation to the rate controller
-					delta_ang_vel = maxAccel[i] * (2*dT);
+					delta_ang_vel = maxAccel[i] * (2*dT); //period time is 2*dT
 
 					if(control_ang[i] < (lastControl_ang[i] - delta_ang_vel)){
 						control_ang[i] =  lastControl_ang[i] - delta_ang_vel;
@@ -190,6 +192,8 @@ void startControllerTask(TimerHandle_t t){
 			//Yaw rate controller input is directly defined by the user
 			control_ang[0] = numbers[1];
 
+
+			//angular PID controller with saturation
 			for(i = 0; i < 3; i++){
 
 				control[i] = PID(i, locAngVel[i], control_ang[i], P[i], I[i], D[i]);
@@ -243,7 +247,7 @@ void startControllerTask(TimerHandle_t t){
 
 
 		}
-		sprintf(str_main, "%6d %6d\n", (int)(control[1] * 100), (int)(round(yprDegree[1] * 100)));
+		sprintf(str_main, "%6d %6d %6d %6d %6d %6d %6d %6d %6d\n", (int)(round(control[0] * 100)), (int)(round(control[1] * 100)), (int)(round(control[2] * 100)), (int)(round(angVel[0] * 100)), (int)(round(angVel[1] * 100)),(int)(round(angVel[2] * 100)), (int)(round(yprDegree[0] * 100)),(int)(round(yprDegree[1] * 100)),(int)(round(yprDegree[2] * 100)));
 		print(str_main);
 		osDelay(10);
 	}

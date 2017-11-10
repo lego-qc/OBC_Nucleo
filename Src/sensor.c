@@ -12,6 +12,9 @@ volatile uint16_t fifoCount;     // count of all bytes currently in FIFO
 
 extern float yprDegree[3];
 extern float angVel[3];
+extern int32_t ang_vel[3];
+extern int32_t ang_vel2[3];
+extern float euler[3];
 
 UART_HandleTypeDef huart2;
 
@@ -22,6 +25,25 @@ void startSensorTask(void const * argument) {
 	float ypr[3];
 	float prev[3];
 	int i = 0;
+	uint diff = 0;
+	uint lastTicks = 0;
+	float freq = 0;
+
+	float filterd[3];
+	float lastInputs[3];
+	float lastInputs2[3];
+	float lastOutputs[3];
+	float lastOutputs2[3];
+
+
+	for(i = 0; i < 3; i++){
+		lastInputs[i] = 0;
+		lastInputs2[i] = 0;
+		lastOutputs[i] = 0;
+		lastOutputs2[i] = 0;
+	}
+
+
 
 //	osDelay(5000);
 	vTaskSuspendAll();
@@ -72,20 +94,62 @@ void startSensorTask(void const * argument) {
 		}
 
 		else if ((mpuIntStatus & 0x01) && (fifoCount >= packetSize)) {
+			float angDiff = 0;
+			uint ticks = xTaskGetTickCount();
+
+			diff = ticks - lastTicks;
+			lastTicks = ticks;
+			freq = (1.0 / diff) * 1000;
+
+
 			MPUgetFIFOBytes(fifoBuffer, packetSize);
 			fifoCount -= packetSize;
 			MPUdmpGetQuaternion(&q, fifoBuffer);
-			//MPUdmpGetGyro32(ang_vel, fifoBuffer);
+			MPUdmpGetGyro32(ang_vel, fifoBuffer);
 
 			MPUdmpGetGravityVect(&gravity, &q);
 			MPUdmpGetYawPitchRoll(ypr, &q, &gravity);
+			MPUdmpGetEuler(euler, &q);
 
+//			ang_vel[2] = ang_vel[2] * -0.00007;
+			ang_vel[0] = ang_vel[0] * - 0.0000467;
+			ang_vel[1] = ang_vel[1] * 0.0000252;
 
-			for(i = 0; i < 3; i++){
+			for(i = 1; i < 3; i++){
 				yprDegree[i] = ((ypr[i] * 180.0)/M_PI);
-				angVel[i] = (yprDegree[i] - prev[i])*100;
+				angVel[i] = (yprDegree[i] - prev[i])*freq;
 				prev[i] = yprDegree[i];
+				ang_vel2[i] = angVel[i];
+
+				//ang_Vel and ypr has different order
+				filterd[i] = 0.23738 * ang_vel[2 - i] + 0.23738 * lastInputs[i] + 0 * lastInputs2[i] + 0.52525 * lastOutputs[i] - 0 * lastOutputs2[i];
+
+				lastInputs[i] = ang_vel[2 - i];
+				lastInputs2[i] = lastInputs[i];
+				lastOutputs[i] = filterd[i];
+				lastOutputs2[i] = lastOutputs[i];
+
 			}
+
+
+
+			//compensate yaw angle disruption
+			yprDegree[0] = ((ypr[0] * 180.0)/M_PI);
+			angDiff = yprDegree[0] - prev[0];
+
+			if(angDiff > 180){
+				angDiff = angDiff - 360;
+			}
+			else if(angDiff < -180){
+				angDiff = angDiff + 360;
+			}
+
+			angVel[0] = (angDiff)*freq;
+			prev[0] = yprDegree[0];
+
+			angVel[2] = filterd[2];
+			angVel[1] = filterd[1];
+
 		}
 
 	}
