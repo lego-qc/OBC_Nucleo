@@ -41,6 +41,7 @@ void startSensorTask(void const * argument) {
 		lastInputs2[i] = 0;
 		lastOutputs[i] = 0;
 		lastOutputs2[i] = 0;
+		prev[i] = 0;
 	}
 
 
@@ -112,19 +113,23 @@ void startSensorTask(void const * argument) {
 			MPUdmpGetEuler(euler, &q);
 
 //			ang_vel[2] = ang_vel[2] * -0.00007;
-			ang_vel[0] = ang_vel[0] * - 0.0000467;
+			ang_vel[0] = ang_vel[0] * -0.0000467;
 			ang_vel[1] = ang_vel[1] * 0.0000252;
 
-			for(i = 1; i < 3; i++){
+			for(i = 0; i < 3; i++){
 				yprDegree[i] = ((ypr[i] * 180.0)/M_PI);
-				angVel[i] = (yprDegree[i] - prev[i])*freq;
-				prev[i] = yprDegree[i];
-				ang_vel2[i] = angVel[i];
+			}
+
+			for(i = 0; i < 2; i++){
+
+				//angVel[i] = (yprDegree[i] - prev[i])*freq;
+				//prev[i] = yprDegree[i];
+				//ang_vel2[i] = angVel[i];
 
 				//ang_Vel and ypr has different order
-				filterd[i] = 0.23738 * ang_vel[2 - i] + 0.23738 * lastInputs[i] + 0 * lastInputs2[i] + 0.52525 * lastOutputs[i] - 0 * lastOutputs2[i];
+				filterd[i] = 0.23738 * ang_vel[i] + 0.23738 * lastInputs[i] + 0.52525 * lastOutputs[i];
 
-				lastInputs[i] = ang_vel[2 - i];
+				lastInputs[i] = ang_vel[i];
 				lastInputs2[i] = lastInputs[i];
 				lastOutputs[i] = filterd[i];
 				lastOutputs2[i] = lastOutputs[i];
@@ -132,9 +137,7 @@ void startSensorTask(void const * argument) {
 			}
 
 
-
 			//compensate yaw angle disruption
-			yprDegree[0] = ((ypr[0] * 180.0)/M_PI);
 			angDiff = yprDegree[0] - prev[0];
 
 			if(angDiff > 180){
@@ -147,7 +150,7 @@ void startSensorTask(void const * argument) {
 			angVel[0] = (angDiff)*freq;
 			prev[0] = yprDegree[0];
 
-			angVel[2] = filterd[2];
+			angVel[2] = filterd[0];
 			angVel[1] = filterd[1];
 
 		}

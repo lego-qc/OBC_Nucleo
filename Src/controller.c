@@ -10,9 +10,11 @@
 #define motor4 (htim3.Instance->CCR4)
 
 #define minPWM 14000
-#define maxControl 2500
-#define linSectionLength 800 //1350
+#define maxControl 5000
+#define linSectionLength 1500 //1350
 #define dT 0.011
+
+#define base_spd 14500
 
 extern int32_t numbers[4];
 extern float yprDegree[3];
@@ -35,12 +37,13 @@ float lastOutputs2[6];
 
 float tmp[6];
 
-float P_ang[] = {0, 3.5, 3.0};
+float P_ang[] = {0, 4, 5.5}; //0 3.5 3
 
-float P[] = {17,   1, 0.8}; //15 2.4 2.2
-float I[] = {0.7, 0.3, 0.3};
-float D[] = {0.5, 0.5, 0.5};
-float maxAccel[] = {40, 450, 450}; //450
+float P[] = {40,   2.5, 2.8};
+float I[] = {0.9, 0.8, 1.8};
+float D[] = {0.5, 0.4, 0.4};
+float maxAccel[] = {40, 500, 500};
+float offset[] = {0, 0.33, -4.71};
 
 int32_t PID(int i, float input, float sp, float P, float I, float D){
 	int32_t output = 0;
@@ -71,10 +74,12 @@ int32_t PID(int i, float input, float sp, float P, float I, float D){
 		lastOutputs[i] = filterd;
 		lastOutputs2[i] = lastOutputs[i];
 
+
 		deriv = (filterd - lastError[i])/dT ; //todo: change to diff
 		lastError[i] = filterd;
+
 	}
-	tmp[i] = filterd;
+	//tmp[i] = filterd;
 	output = (int32_t)(error*(P) + integrals[i]*(I) + deriv*(D));
 
 	return output;
@@ -121,7 +126,7 @@ void startControllerTask(TimerHandle_t t){
 			motor4 =13000;
 		}
 		else if(started == true){
-			int speed = 14500; //14240
+			int speed = 0.0;
 
 			int motor1Loc = 0;
 			int motor2Loc = 0;
@@ -137,7 +142,7 @@ void startControllerTask(TimerHandle_t t){
 			//copy to local variables
 			for(i = 0; i < 3; i++){
 				locAngVel[i] = angVel[i];
-				locYprDegree[i] = yprDegree[i];
+				locYprDegree[i] = yprDegree[i] - offset[i];
 			}
 
 
@@ -148,24 +153,31 @@ void startControllerTask(TimerHandle_t t){
 
 
 				//calculate pitch and roll P rate output
-				for(i = 1; i < 3; i++){
-					float error = numbers[i+1] - locYprDegree[i];
-					float lin_section = linSectionLength / (P_ang[i] * P_ang[i]);
+				for(i = 0; i < 3; i++){
 					float delta_ang_vel = 0.0;
 
+					if(i != 0){
+						float error = numbers[i+1] - locYprDegree[i];
+						float lin_section = linSectionLength / (P_ang[i] * P_ang[i]);
 
-					if(error > lin_section){
-						control_ang[i] = sqrt(2.0 * linSectionLength * (error - (lin_section / 2.0)));
-					}
-					else if(error < (-lin_section)){
-						control_ang[i] = -sqrt(2.0 * linSectionLength * (-error - (lin_section / 2.0)));
+
+						if(error > lin_section){
+							control_ang[i] = sqrt(2.0 * linSectionLength * (error - (lin_section / 2.0)));
+						}
+						else if(error < (-lin_section)){
+							control_ang[i] = -sqrt(2.0 * linSectionLength * (-error - (lin_section / 2.0)));
+						}
+						else{
+							control_ang[i] = P_ang[i] * error;
+						}
+
+
+						//tmp[i] = control_ang[i];
 					}
 					else{
-						control_ang[i] = P_ang[i] * error;
+						//Yaw rate controller input is directly defined by the user
+						control_ang[0] = numbers[1];
 					}
-
-
-					tmp[i] = control_ang[i];
 
 
 					//input limitation to the rate controller
@@ -188,15 +200,19 @@ void startControllerTask(TimerHandle_t t){
 
 			count++;
 
-
-			//Yaw rate controller input is directly defined by the user
-			control_ang[0] = numbers[1];
+			speed = base_spd + (numbers[0] * 100);
 
 
 			//angular PID controller with saturation
 			for(i = 0; i < 3; i++){
+				float integral = 0;
 
-				control[i] = PID(i, locAngVel[i], control_ang[i], P[i], I[i], D[i]);
+				//use integrator only after the take off
+				if(speed >= (base_spd + 100)){ //~2000 enough to take off
+					integral = I[i];
+				}
+
+				control[i] = PID(i, locAngVel[i], control_ang[i], P[i], integral, D[i]);
 
 				if(control[i] >= maxControl){
 					control[i] = maxControl;
@@ -209,10 +225,10 @@ void startControllerTask(TimerHandle_t t){
 
 
 
-			motor1Loc = (int)(speed + (control[2] * 1) + (control[1] * 1) + (1 * control[0]));
-			motor2Loc = (int)(speed + (control[2] * 1) - (control[1] * 1) - (1 * control[0]));
-			motor3Loc = (int)(speed - (control[2] * 1) - (control[1] * 1) + (1 * control[0]));
-			motor4Loc = (int)(speed - (control[2] * 1) + (control[1] * 1) - (1 * control[0]));
+			motor1Loc = (int)(speed + (control[2] ) + (control[1] ) + ( control[0]));
+			motor2Loc = (int)(speed + (control[2] ) - (control[1] ) - ( control[0]));
+			motor3Loc = (int)(speed - (control[2] ) - (control[1] ) + ( control[0]));
+			motor4Loc = (int)(speed - (control[2] ) + (control[1] ) - ( control[0]));
 
 			if(motor1Loc >= minPWM){
 				motor1 = motor1Loc;
@@ -242,12 +258,15 @@ void startControllerTask(TimerHandle_t t){
 				motor4 = minPWM;
 			}
 
-
+			tmp[0] = motor1Loc;
+			tmp[1] = motor3Loc;
 
 
 
 		}
-		sprintf(str_main, "%6d %6d %6d %6d %6d %6d %6d %6d %6d\n", (int)(round(control[0] * 100)), (int)(round(control[1] * 100)), (int)(round(control[2] * 100)), (int)(round(angVel[0] * 100)), (int)(round(angVel[1] * 100)),(int)(round(angVel[2] * 100)), (int)(round(yprDegree[0] * 100)),(int)(round(yprDegree[1] * 100)),(int)(round(yprDegree[2] * 100)));
+
+		sprintf(str_main, "%6d %6d %6d %6d %6d %6d %6d %6d %6d\n", (int)(round(control[0] * 100)), (int)(round(control[1] * 100)), (int)(round(control[2] * 100)), (int)(round(angVel[0] * 100)), (int)(round(angVel[1] * 100)),(int)(round(angVel[2] * 100)), (int)(round(locYprDegree[0] * 100)),(int)(round(locYprDegree[1] * 100)),(int)(round(locYprDegree[2] * 100)));
+		//sprintf(str_main, "%6d %6d %6d %6d %6d %6d %6d %6d %6d\n", (int)(round(tmp[0])), (int)(round(tmp[1])), (int)(round(control[2] * 100)), (int)(round(angVel[0] * 100)), (int)(round(angVel[1] * 100)),(int)(round(angVel[2] * 100)), (int)(round(yprDegree[0] * 100)),(int)(round(yprDegree[1] * 100)),(int)(round(yprDegree[2] * 100)));
 		print(str_main);
 		osDelay(10);
 	}
